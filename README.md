@@ -221,6 +221,6 @@ NOTION_INTEGRATION_TOKEN=
 
 **Desarrollado por Franco Valentin Guerrero**
 
-* 🤖 **Especialidad:** Consultoría de IA & Automatización para PYMEs
+* 🤖 **Especialidad:** Consultoría de IA & Automatización
 * 🐙 **GitHub:** [Ver perfil](https://github.com/franvg99)
 * 💼 **LinkedIn:** [Ver perfil](https://linkedin.com/in/fguerrero99)
