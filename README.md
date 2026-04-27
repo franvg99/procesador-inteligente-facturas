@@ -26,7 +26,7 @@ Este proyecto implementa un **flujo automatizado en n8n** que monitorea una casi
     ├── seccion_validacion.png       # Nodos de validación de JSON
     ├── seccion_destino.png          # Nodos de escritura en Google Sheets
     ├── seccion_errores.png          # Error Workflow (flujo separado)
-    ├── sheets_log.png               # Hoja de facturas con datos reales
+    ├── seccion_log.png               # Hoja de facturas con datos reales
     └── dashboard_looker.png         # Dashboard de Looker Studio conectado a Sheets
 ```
 
@@ -131,52 +131,52 @@ El flujo extrae y registra los siguientes 19 campos por factura:
 ### 1. Vista General del Workflow
 Arquitectura completa del flujo en n8n con sus secciones documentadas mediante Sticky Notes.
 
-![Workflow Completo](evidencia/workflow_completo.png)
+![Workflow Completo](evidence/workflow_completo.png)
 
 ### 2. Recepción y Separación de Documentos
 Gmail Trigger, Split Out y Extract from File.
 
-![Recepción](evidencia/seccion_recepcion.png)
+![Recepción](evidence/seccion_recepcion.png)
 
 ### 3. Filtros de Validación
 Detección de PDF digital vs escaneado e identificación de comprobantes fiscales.
 
-![Filtros](evidencia/seccion_filtros.png)
+![Filtros](evidence/seccion_filtros.png)
 
 ### 4. Normalización de Binarios
 Estandarización del nombre del adjunto para compatibilidad con GPT-4o Vision.
 
-![Normalización](evidencia/seccion_normalizacion.png)
+![Normalización](evidence/seccion_normalizacion.png)
 
 ### 5. Procesamiento con Inteligencia Artificial
 GPT-4o mini para PDFs digitales y GPT-4o Vision para documentos escaneados.
 
-![IA](evidencia/seccion_ia.png)
+![IA](evidence/seccion_ia.png)
 
 ### 6. Validación
 Parseo del JSON y verificación de comprobante válido antes de escribir en Sheets.
 
-![Validación](evidencia/seccion_validacion.png)
+![Validación](evidence/seccion_validacion.png)
 
 ### 7. Destino Final
 Escritura en Google Sheets — hoja de facturas válidas y hoja de errores para auditoría.
 
-![Destino](evidencia/seccion_destino.png)
+![Destino](evidence/seccion_destino.png)
 
 ### 8. Manejo de Errores
 Error Workflow con notificación por Gmail y registro en Notion.
 
-![Errores](evidencia/seccion_errores.png)
+![Errores](evidence/seccion_errores.png)
 
 ### 9. Log de Facturas en Google Sheets
 Registro estructurado de facturas procesadas con los 19 campos fiscales.
 
-![Google Sheets](evidencia/sheets_log.png)
+![Google Sheets](evidence/seccion_log.png)
 
 ### 10. Dashboard en Looker Studio
 Visualización del total facturado, IVA, ranking de proveedores y evolución temporal, conectado directamente a la planilla de Sheets.
 
-![Dashboard](evidencia/dashboard_looker.png)
+![Dashboard](evidence/dashboard_looker.png)
 
 ---
 
