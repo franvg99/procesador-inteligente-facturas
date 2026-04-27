@@ -1,0 +1,875 @@
+{
+  "name": "Procesador de Facturas",
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "simple": false,
+        "filters": {
+          "q": "has:attachment filename:pdf"
+        },
+        "options": {
+          "downloadAttachments": true
+        }
+      },
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -672,
+        16
+      ],
+      "id": "6da94e7d-df53-4b88-b56a-ca2d6df33d6e",
+      "name": "Gmail Trigger",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "LjXkSjCuSjqaLY2C",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "ea7b30b2-6d7b-4297-9b99-e786d218886f",
+              "leftValue": "={{ $json.text.length }}",
+              "rightValue": 100,
+              "operator": {
+                "type": "number",
+                "operation": "lt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        112,
+        16
+      ],
+      "id": "9dec0f58-f02b-41b4-8a1c-537a766676e7",
+      "name": "¿PDF o SCAN?"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "31f1e3b8-5541-4fa4-8242-5a63191d872d",
+              "leftValue": "={{ $json.text.toUpperCase() }}",
+              "rightValue": "FACTURA",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        352,
+        32
+      ],
+      "id": "1a242852-4726-4cf2-b284-57223c86d4e8",
+      "name": "¿Es factura?"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "1b66d65c-8a8c-40bf-909e-df8d6ac42417",
+              "leftValue": "={{ $json.error }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "empty",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "c7b232c3-961f-4c90-ba05-ea449056d939",
+              "leftValue": "={{ $json.tipo_comprobante }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1888,
+        -336
+      ],
+      "id": "c9232ce2-f7bb-4387-bb81-c3f5bb640f0e",
+      "name": "¿Es valida?"
+    },
+    {
+      "parameters": {
+        "jsCode": "return $input.all().map(item => {\n  try {\n    const texto = item.json.output[0].content[0].text;\n    const datos = JSON.parse(texto);\n    return { json: datos };\n  } catch (error) {\n    return { \n      json: { \n        error: true, \n        mensaje: error.message,\n        texto_original: item.json.output[0].content[0].text\n      } \n    };\n  }\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1680,
+        -336
+      ],
+      "id": "07b8a9a3-e65d-4027-b346-48b62129642e",
+      "name": "JSON Valido"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "GPT-4O-MINI"
+        },
+        "responses": {
+          "values": [
+            {
+              "content": "=Sos un asistente especializado en análisis de comprobantes fiscales argentinos.\n\nAnalizá el siguiente texto extraído de una factura argentina y devolvé ÚNICAMENTE un objeto JSON válido, sin texto adicional, sin bloques de código, sin explicaciones.\n\nSi un campo no existe en el documento, devolvé null para ese campo. Nunca inventes datos.\n\nEl JSON debe tener exactamente esta estructura:\n{\n  \"tipo_comprobante\": \"Identificá la letra del comprobante (A, B o C) \nque figura explícitamente en el documento. No la inferras del contenido.\",\n  \"numero_comprobante\": \"0000-00000000\",\n  \"fecha_emision\": \"DD/MM/AAAA\",\n  \"fecha_vencimiento\": \"DD/MM/AAAA\",\n  \"proveedor_razon_social\": \"\",\n  \"proveedor_cuit\": \"\",\n  \"proveedor_condicion_iva\": \"Responsable Inscripto / Monotributista / Exento / otro\",\n  \"receptor_nombre\": \"\",\n  \"receptor_cuit_dni\": \"\",\n  \"receptor_condicion_iva\": \"Responsable Inscripto / Consumidor Final / Monotributista / otro\",\n  \"condicion_venta\": \"\",\n  \"importe_neto_gravado\": null,\n  \"iva_discriminado\": null,\n  \"otros_impuestos\": null,\n  \"iva_contenido\": null,\n  \"importe_total\": null,\n  \"cae\": \"\",\n  \"vencimiento_cae\": \"DD/MM/AAAA\",\n  \"moneda\": \"ARS / USD / otro\"\n}\n\nTexto de la factura:\n{{ $json.text }}\n"
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2.1,
+      "position": [
+        944,
+        -240
+      ],
+      "id": "b249f260-48f0-446f-9d31-a79aa2c55401",
+      "name": "Extraemos datos PDF",
+      "credentials": {
+        "openAiApi": {
+          "id": "lo1P0PFL7CDOaqGg",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4o",
+          "mode": "list",
+          "cachedResultName": "GPT-4O"
+        },
+        "responses": {
+          "values": [
+            {
+              "content": "=Sos un asistente especializado en análisis de comprobantes fiscales argentinos.\n\nAnalizá el siguiente texto extraído de una factura argentina y devolvé ÚNICAMENTE un objeto JSON válido, sin texto adicional, sin bloques de código, sin explicaciones.\n\nEl documento es una imagen escaneada. Leé visualmente el contenido y extraé los datos.\n\nSi un campo no existe en el documento, devolvé null para ese campo. Nunca inventes datos.\n\nEl JSON debe tener exactamente esta estructura:\n{\n  \"tipo_comprobante\": \"Identificá la letra del comprobante (A, B o C) \nque figura explícitamente en el documento. No la inferras del contenido.\",\n  \"numero_comprobante\": \"0000-00000000\",\n  \"fecha_emision\": \"DD/MM/AAAA\",\n  \"fecha_vencimiento\": \"DD/MM/AAAA\",\n  \"proveedor_razon_social\": \"\",\n  \"proveedor_cuit\": \"\",\n  \"proveedor_condicion_iva\": \"Responsable Inscripto / Monotributista / Exento / otro\",\n  \"receptor_nombre\": \"\",\n  \"receptor_cuit_dni\": \"\",\n  \"receptor_condicion_iva\": \"Responsable Inscripto / Consumidor Final / Monotributista / otro\",\n  \"condicion_venta\": \"\",\n  \"importe_neto_gravado\": null,\n  \"iva_discriminado\": null,\n  \"otros_impuestos\": null,\n  \"iva_contenido\": null,\n  \"importe_total\": null,\n  \"cae\": \"\",\n  \"vencimiento_cae\": \"DD/MM/AAAA\",\n  \"moneda\": \"ARS / USD / otro\"\n}\n"
+            },
+            {
+              "type": "file",
+              "fileType": "base64",
+              "binaryPropertyName": "=attachment_0",
+              "fileName": "factura.pdf"
+            }
+          ]
+        },
+        "simplify": false,
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2.1,
+      "position": [
+        944,
+        -448
+      ],
+      "id": "bf07db20-7313-4195-9d40-e3101c42223a",
+      "name": "Extraemos datos SCAN",
+      "credentials": {
+        "openAiApi": {
+          "id": "lo1P0PFL7CDOaqGg",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "pdf",
+        "binaryPropertyName": "={{ Object.keys($binary)[0] }}",
+        "options": {
+          "keepSource": "binary"
+        }
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1.1,
+      "position": [
+        -256,
+        16
+      ],
+      "id": "e00a9584-4be3-4d4b-9333-96cd442d38fa",
+      "name": "Extraer datos binarios"
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "$binary",
+        "include": "allOtherFields",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        -464,
+        16
+      ],
+      "id": "230eb7ce-bec2-4987-b2e9-c31e7ecfd99d",
+      "name": "Dividir Documentos"
+    },
+    {
+      "parameters": {
+        "content": "## 📥 Recepción y Separación de Documentos\n\n**Gmail Trigger** monitorea la bandeja de entrada cada 1 minuto.\nSolo procesa emails con adjuntos PDF (filtro: `has:attachment filename:pdf`).\n\n**Dividir Documentos** separa cada PDF adjunto en un item individual.\nSi el email tiene 3 PDFs, el flujo se ejecuta 3 veces en paralelo.\n\n**Extraer datos binarios** convierte el PDF a texto plano.\n",
+        "height": 416,
+        "width": 624,
+        "color": 7
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -736,
+        -224
+      ],
+      "id": "c7af8033-2ecf-4d93-b267-c6eb530cce87",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "jsCode": "return $input.all().map(item => {\n  const binaryKey = Object.keys(item.binary)[0];\n  return {\n    json: item.json,\n    binary: {\n      attachment_0: item.binary[binaryKey]\n    }\n  };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        352,
+        -576
+      ],
+      "id": "3a8c71ab-9fcc-479e-9e3d-2af67c0dec12",
+      "name": "Renombrar Archivo"
+    },
+    {
+      "parameters": {
+        "content": "## 🔍 Filtros de Validación\n\n**¿PDF o SCAN?** verifica si el PDF tiene texto extraíble.\n\n\n**¿Es factura?** verifica que el documento sea un comprobante fiscal argentino.\n",
+        "height": 336,
+        "width": 544,
+        "color": 7
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        16,
+        -144
+      ],
+      "id": "3fcf6cb4-c7f5-47c0-8602-29fb6255dec5",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "content": "## 🔄 Normalización de Binarios\n\n**Renombrar adjunto** estandariza el nombre del binario a `attachment_0`.",
+        "height": 256,
+        "width": 432,
+        "color": 7
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        176,
+        -688
+      ],
+      "id": "be0ce211-3ab5-4fc6-8c8b-5e71e74147b8",
+      "name": "Sticky Note2"
+    },
+    {
+      "parameters": {
+        "content": "## 🤖 Procesamiento con Inteligencia Artificial\n\n**GPT-4o mini — PDF Digital** recibe el texto extraído del PDF y lo analiza.\nExtrae los campos fiscales relevantes para el contexto argentino:\nproveedor, CUIT, tipo de comprobante, fechas, importes, IVA y CAE.\nDevuelve siempre un JSON estructurado con los datos o `null` si el campo no existe.\n\n**GPT-4o Vision — PDF Escaneado** recibe el PDF como imagen y lo lee visualmente.\nAplica el mismo prompt de extracción que el nodo anterior pero sobre\nel documento visual en lugar de texto plano.\nIdeal para facturas escaneadas o fotografiadas que no tienen texto digital.",
+        "height": 656,
+        "width": 608,
+        "color": 7
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        784,
+        -720
+      ],
+      "id": "b3b02e2a-dcb7-4abf-9d2f-e3568326ab30",
+      "name": "Sticky Note3"
+    },
+    {
+      "parameters": {
+        "content": "## 📊 Validación\n\n**JSON Válido** convierte el texto devuelto por el LLM en un objeto JSON\nque n8n puede leer con expresiones. Si el parseo falla, captura el error\ny lo registra sin interrumpir el procesamiento del resto de las facturas.\n\n**¿Es válida?** aplica dos condiciones antes de escribir en Sheets:\n- El campo `error` debe estar vacío → el parseo fue exitoso\n- El campo `tipo_comprobante` no debe estar vacío → es una factura válida\nSi alguna condición falla, el item se descarta sin escribir en Sheets.",
+        "height": 400,
+        "width": 544,
+        "color": 7
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1552,
+        -592
+      ],
+      "id": "a3b12278-e7c1-439a-8eb5-882f4c933c22",
+      "name": "Sticky Note4"
+    },
+    {
+      "parameters": {
+        "content": "## ✅ Destino Final\n\n**Insertar Factura** escribe una fila nueva en Google Sheets por cada factura válida.\nMapea cada campo del JSON a su columna correspondiente:\nproveedor, CUIT, fechas, importes, IVA, CAE y moneda.\n\n**Editar Campos** prepara los datos de error para su registro.\nConstruye tres campos: fecha de procesamiento, motivo del error y contenido original.\n\n**Insertar Error** registra el error en la hoja `Errores` de la planilla.\nPermite auditar qué documentos no pudieron procesarse y por qué.",
+        "height": 576,
+        "width": 608,
+        "color": 7
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        2256,
+        -640
+      ],
+      "id": "8bcdfdf8-c0df-4a68-b38f-47ddd92b04c1",
+      "name": "Sticky Note5"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1pvFo9BGpJkf5Qnbn1mJmLFOhK9ZMS7Mz53QvAFP9LBg",
+          "mode": "list",
+          "cachedResultName": "Facturas proveedores",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1pvFo9BGpJkf5Qnbn1mJmLFOhK9ZMS7Mz53QvAFP9LBg/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1084408356,
+          "mode": "list",
+          "cachedResultName": "Errores",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1pvFo9BGpJkf5Qnbn1mJmLFOhK9ZMS7Mz53QvAFP9LBg/edit#gid=1084408356"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "fecha_procesamiento": "{{ $json.fecha_procesamiento }}",
+            "motivo": "{{ $json.motivo }}",
+            "texto_original": "{{ $json.texto_original }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "fecha_procesamiento",
+              "displayName": "fecha_procesamiento",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "motivo",
+              "displayName": "motivo",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "texto_original",
+              "displayName": "texto_original",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        2544,
+        -224
+      ],
+      "id": "7a6f2979-b5ad-495b-a945-ca2a97f20651",
+      "name": "Insertar Error",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "xWeknmyul0W2QX7B",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1pvFo9BGpJkf5Qnbn1mJmLFOhK9ZMS7Mz53QvAFP9LBg",
+          "mode": "list",
+          "cachedResultName": "Facturas proveedores",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1pvFo9BGpJkf5Qnbn1mJmLFOhK9ZMS7Mz53QvAFP9LBg/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Datos facturas",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1pvFo9BGpJkf5Qnbn1mJmLFOhK9ZMS7Mz53QvAFP9LBg/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "tipo_comprobante": "={{ $json.tipo_comprobante }}",
+            "numero_comprobante": "={{ $json.numero_comprobante }}",
+            "fecha_emision": "={{ $json.fecha_emision }}",
+            "fecha_vencimiento": "={{ $json.fecha_vencimiento }}",
+            "proveedor_razon_social": "={{ $json.proveedor_razon_social }}",
+            "proveedor_cuit": "={{ $json.proveedor_cuit }}",
+            "proveedor_condicion_iva": "={{ $json.proveedor_condicion_iva }}",
+            "receptor_nombre": "={{ $json.receptor_nombre }}",
+            "receptor_cuit_dni": "={{ $json.receptor_cuit_dni }}",
+            "receptor_condicion_iva": "={{ $json.receptor_condicion_iva }}",
+            "condicion_venta": "={{ $json.condicion_venta }}",
+            "importe_neto_gravado": "={{ $json.importe_neto_gravado }}",
+            "iva_discriminado": "={{ $json.iva_discriminado }}",
+            "otros_impuestos": "={{ $json.otros_impuestos }}",
+            "importe_total": "={{ $json.importe_total }}",
+            "iva_contenido": "={{ $json.iva_contenido }}",
+            "cae": "={{ $json.cae }}",
+            "vencimiento_cae": "={{ $json.vencimiento_cae }}",
+            "moneda": "={{ $json.moneda }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "tipo_comprobante",
+              "displayName": "tipo_comprobante",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "numero_comprobante",
+              "displayName": "numero_comprobante",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "fecha_emision",
+              "displayName": "fecha_emision",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "fecha_vencimiento",
+              "displayName": "fecha_vencimiento",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "proveedor_razon_social",
+              "displayName": "proveedor_razon_social",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "proveedor_cuit",
+              "displayName": "proveedor_cuit",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "proveedor_condicion_iva",
+              "displayName": "proveedor_condicion_iva",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "receptor_nombre",
+              "displayName": "receptor_nombre",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "receptor_cuit_dni",
+              "displayName": "receptor_cuit_dni",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "receptor_condicion_iva",
+              "displayName": "receptor_condicion_iva",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "condicion_venta",
+              "displayName": "condicion_venta",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "importe_neto_gravado",
+              "displayName": "importe_neto_gravado",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "iva_discriminado",
+              "displayName": "iva_discriminado",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "otros_impuestos",
+              "displayName": "otros_impuestos",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "iva_contenido",
+              "displayName": "iva_contenido",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "importe_total",
+              "displayName": "importe_total",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "cae",
+              "displayName": "cae",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "vencimiento_cae",
+              "displayName": "vencimiento_cae",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "moneda",
+              "displayName": "moneda",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        2336,
+        -384
+      ],
+      "id": "5ca7153b-e6e6-4aac-9bad-4fc7209c69d6",
+      "name": "Insertar Factura",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "xWeknmyul0W2QX7B",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "3476f915-03bb-4813-928f-fb348d1c6505",
+              "name": "=fecha_procesamiento",
+              "value": "={{ $now.toISO() }}",
+              "type": "string"
+            },
+            {
+              "id": "9feea28e-b61e-4e76-b872-7b4ce10b241d",
+              "name": "motivo",
+              "value": "={{ $json.error ? $json.mensaje : 'tipo_comprobante vacío' }}",
+              "type": "string"
+            },
+            {
+              "id": "3052493c-415d-49d1-9ddb-f755edf7e9ac",
+              "name": "texto_original",
+              "value": "={{ $json.texto_original ?? '' }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2336,
+        -224
+      ],
+      "id": "4161bb08-1335-44ad-bfcf-a5ce3c88400e",
+      "name": "Edit Campos"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Gmail Trigger": {
+      "main": [
+        [
+          {
+            "node": "Dividir Documentos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "¿PDF o SCAN?": {
+      "main": [
+        [
+          {
+            "node": "Renombrar Archivo",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "¿Es factura?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "¿Es factura?": {
+      "main": [
+        [
+          {
+            "node": "Extraemos datos PDF",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "¿Es valida?": {
+      "main": [
+        [
+          {
+            "node": "Insertar Factura",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Edit Campos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "JSON Valido": {
+      "main": [
+        [
+          {
+            "node": "¿Es valida?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extraemos datos PDF": {
+      "main": [
+        [
+          {
+            "node": "JSON Valido",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extraemos datos SCAN": {
+      "main": [
+        [
+          {
+            "node": "JSON Valido",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extraer datos binarios": {
+      "main": [
+        [
+          {
+            "node": "¿PDF o SCAN?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Dividir Documentos": {
+      "main": [
+        [
+          {
+            "node": "Extraer datos binarios",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Renombrar Archivo": {
+      "main": [
+        [
+          {
+            "node": "Extraemos datos SCAN",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insertar Factura": {
+      "main": [
+        []
+      ]
+    },
+    "Edit Campos": {
+      "main": [
+        [
+          {
+            "node": "Insertar Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false,
+    "timeSavedMode": "fixed",
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": "9h19BaPBIFWKfQo7"
+  },
+  "versionId": "9f222650-f848-485f-bdb5-d12caaaad779",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "edf4f025bee720a7541a2beceaaf5b557cd485d2aaac1cdb0d83b8ca59d9ea01"
+  },
+  "id": "3yWSbbmd8GQGDvkg",
+  "tags": []
+}
